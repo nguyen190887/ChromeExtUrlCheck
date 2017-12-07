@@ -11,7 +11,25 @@ chrome.runtime.onMessage.addListener(
     function(request, sender, sendResponse) {
         if (request.message == "open_new_tab") {
             [].forEach.call(request.urls, url => {
-                chrome.tabs.create({"url": url});
+                // chrome.tabs.create({"url": url});
+
+                var xhr = new XMLHttpRequest();
+                xhr.open('POST', 'http://localhost:2150/api/linkchecker', true);
+                xhr.setRequestHeader("Content-Type", "application/json");
+
+                xhr.onreadystatechange = function() {
+                    if (xhr.readyState === 4 && xhr.status === 200) {
+                        var data = JSON.parse(xhr.responseText);
+                        console.log(`Result: ${data.StatusCode} | ${data.Success} | ${url}`);
+                    }
+                };
+
+                // xhr.send(`Url=${encodeURIComponent(url)}&UserAgent=${request.userAgent}`);
+                var data = {
+                    Url: url,
+                    UserAgent: request.userAgent
+                };
+                xhr.send(JSON.stringify(data));
             });
         }
     }

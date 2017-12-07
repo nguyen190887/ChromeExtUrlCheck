@@ -3,7 +3,7 @@ var logDomain = '';
 // listen message
 chrome.runtime.onMessage.addListener(
     function(request, sender, sendResponse) {
-        if( request.message === "clicked_browser_action" ) {
+        if( request.message === "request_urls" ) {
             var allUrls = 
                 [].map.call(document.querySelectorAll('a[href^="http"], a[href^="/"]'), (item) => {
                     if (!logDomain || item.href.indexOf(logDomain) > -1) {
@@ -13,7 +13,12 @@ chrome.runtime.onMessage.addListener(
                 })
                 .filter(item => item !== '');
 
-            chrome.runtime.sendMessage({"message": "open_new_tab", "urls": allUrls.slice(0, 5)});
+            chrome.runtime.sendMessage(
+                {
+                    "message": "response_urls",
+                    "urls": allUrls, //.slice(0, 3),
+                    "userAgent" : navigator.userAgent
+                });
         }
     }
 );
