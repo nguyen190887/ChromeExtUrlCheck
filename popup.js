@@ -1,51 +1,59 @@
-// TODO: move logic to background to avoid data lost issue
-var _validatedUrls = [];
-var _userAgent = '';
-var _alreadyValidated = {};
+var port = chrome.extension.connect({
+  name: "Sample Communication"
+});
+// port.postMessage("Hi BackGround");
+// port.onMessage.addListener(function(msg) {
+//   console.log("message recieved" + msg);
+// });
 
-function fetchUrlStatus(url, userAgent, callback) {
-  var xhr = new XMLHttpRequest();
-  xhr.open('POST', 'http://localhost:2150/api/linkchecker', true);
-  xhr.setRequestHeader("Content-Type", "application/json");
-  xhr.withCredentials = true;
+// // TODO: move logic to background to avoid data lost issue
+// var _validatedUrls = [];
+// var _userAgent = '';
+// var _alreadyValidated = {};
 
-  xhr.onreadystatechange = function() {
-      if (xhr.readyState === 4 && xhr.status === 200) {
-          var data = JSON.parse(xhr.responseText);
-          console.log(`Result: ${data.StatusCode} | ${data.Success} | ${url}`);
-          callback(data);
-      }
-  };
+// function fetchUrlStatus(url, userAgent, callback) {
+//   var xhr = new XMLHttpRequest();
+//   xhr.open('POST', 'http://localhost:2150/api/linkchecker', true);
+//   xhr.setRequestHeader("Content-Type", "application/json");
+//   xhr.withCredentials = true;
 
-  var data = {
-      Url: url,
-      UserAgent: userAgent
-  };
-  xhr.send(JSON.stringify(data));
-}
+//   xhr.onreadystatechange = function() {
+//       if (xhr.readyState === 4 && xhr.status === 200) {
+//           var data = JSON.parse(xhr.responseText);
+//           console.log(`Result: ${data.StatusCode} | ${data.Success} | ${url}`);
+//           callback(data);
+//       }
+//   };
 
-function appendZipCode(url, zip) {
-  if (url.indexOf('?') > -1) {
-    return url.replace('?', `?zipcode=${zip}&`);
-  }
-  else url + `?zipcode=${zip}`;
-}
+//   var data = {
+//       Url: url,
+//       UserAgent: userAgent
+//   };
+//   xhr.send(JSON.stringify(data));
+// }
 
-function validateUrls() {
-  [].forEach.call(document.querySelectorAll('input[type=checkbox]'), item => {
-    if (item.checked) {
-      var index = parseInt(item.value),
-          url = _validatedUrls[index];
+// function appendZipCode(url, zip) {
+//   if (url.indexOf('?') > -1) {
+//     return url.replace('?', `?zipcode=${zip}&`);
+//   }
+//   else url + `?zipcode=${zip}`;
+// }
 
-      if (!_alreadyValidated[url]) {
-        _alreadyValidated[url] = true;
-        fetchUrlStatus(appendZipCode(url, 12345), _userAgent, data => {
-          updateLinkStatus(index, data);
-        });
-      }
-    }
-  });
-};
+// function validateUrls() {
+//   [].forEach.call(document.querySelectorAll('input[type=checkbox]'), item => {
+//     if (item.checked) {
+//       var index = parseInt(item.value),
+//           url = _validatedUrls[index];
+
+//       if (!_alreadyValidated[url]) {
+//         _alreadyValidated[url] = true;
+//         fetchUrlStatus(appendZipCode(url, 12345), _userAgent, data => {
+//           updateLinkStatus(index, data);
+//         });
+//       }
+//     }
+//   });
+// };
 
 function updateLinkStatus(index, data) {
   var li = document.getElementById(`link_${index}`);
@@ -62,7 +70,7 @@ function updateLinkStatus(index, data) {
   }
 }
 
-function processUrl (urls) {
+function processUrls(urls) {
   var urlList = document.getElementById('urlList');
   urlList.innerHTML = '';
 
@@ -122,9 +130,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
 chrome.runtime.onMessage.addListener(
   function(request, sender, sendResponse) {
-      if (request.message == "response_urls") {
-          _userAgent = request.userAgent;
-          processUrl(request.urls);
-      }
+    switch(request.message) {
+      case 'response_urls':
+        processUrls(request.urls);
+        port.postMessage({message: 'fetch_data', userAgent: request.userAgent, urls: request.urls});
+        break;
+    }
+  }
+);
+
+port.onMessage.addListener(
+  function(request, sender, sendResponse) {
+    switch(request.message) {
+      case 'load_data':
+        processUrls(request.urls);
+        break;
+    }
   }
 );
