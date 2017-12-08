@@ -13,6 +13,11 @@ var _userAgent = '';
 var _alreadyValidated = {};
 var _linkStatus = {};
 
+function resetLinkStatus() {
+    _alreadyValidated = {};
+    _linkStatus = {};
+}
+
 function fetchUrlStatus(url, userAgent, callback) {
   var xhr = new XMLHttpRequest();
   xhr.open('POST', 'http://localhost:2150/api/linkchecker', true);
@@ -42,6 +47,12 @@ function appendZipCode(url, zip) {
 }
 
 function validateUrls(urlIndexes, port) {
+    let totalLinks = urlIndexes.length,
+        count = 0,
+        failedCount = 0,
+        successCount = 0,
+        ignoredCount = 0;
+
   [].forEach.call(urlIndexes, index => {
       var url = _validatedUrls[index];
 
@@ -56,16 +67,30 @@ function validateUrls(urlIndexes, port) {
                     port.postMessage({message: 'update_link_status', index, status});
                 } catch(e) {}
             }
+
+            if (data.Success) {
+                successCount++;
+            } else {
+                failedCount++;
+            }
+
+            count++;
+            if (count == totalLinks) {
+                port.postMessage({message: 'done_validation', status: {successCount, failedCount, ignoredCount}});
+            }
         });
+      } else {
+          totalLinks--;
+          ignoredCount++;
       }
   });
 };
 
-chrome.runtime.onMessage.addListener(
-    function(request, sender, sendResponse) {
-        // TODO
-    }
-);
+// chrome.runtime.onMessage.addListener(
+//     function(request, sender, sendResponse) {
+//         // TODO
+//     }
+// );
 
 chrome.extension.onConnect.addListener(function(port) {
     _isConnected = true;
@@ -78,6 +103,7 @@ chrome.extension.onConnect.addListener(function(port) {
             case 'fetch_data':
                 _userAgent = request.userAgent;
                 _validatedUrls = request.urls;
+                resetLinkStatus();
                 break;
             case 'validate_data':
                 validateUrls(request.urlIndexes, port);

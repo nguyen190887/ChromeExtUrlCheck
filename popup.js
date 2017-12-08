@@ -8,6 +8,7 @@ function validateUrls() {
     .call(document.querySelectorAll('input[type=checkbox]'), item => item.checked)
     .map(item => parseInt(item.value));
   port.postMessage({message: 'validate_data', urlIndexes});
+  markValidationInProgress(urlIndexes.length);
 };
 
 function updateLinkStatus(index, data) {
@@ -71,10 +72,37 @@ function selectAll () {
   });
 }
 
+function unselectAll () {
+  [].forEach.call(document.querySelectorAll('input[type=checkbox]'), item => {
+    item.checked = false;
+  });
+}
+
+function setResult(html) {
+  let div = document.getElementById('validationResult');
+  div.innerHTML = html;
+}
+
+function updateValidateResult(status) {
+  setResult(
+    `Done: <span class="passed">${status.successCount} passed</span>,
+    <span class="failed">${status.failedCount} failed</span>,
+    <span class="ignored">${status.ignoredCount} ignored</span>`);
+}
+
+function resetValidationResult() {
+  setResult('');
+}
+
+function markValidationInProgress(linkCount) {
+  setResult(`Processing ${linkCount} links...`);
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   var fetchUrlButton = document.getElementById('fetchUrls'),
       validateButton = document.getElementById('validateUrls'),
-      selectAllButton = document.getElementById('selectAll');
+      selectAllButton = document.getElementById('selectAll'),
+      unselectAllButton = document.getElementById('unselectAll');
 
   fetchUrlButton.addEventListener('click', () => {
     chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
@@ -85,6 +113,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   validateButton.addEventListener('click', validateUrls);
   selectAllButton.addEventListener('click', selectAll);
+  unselectAllButton.addEventListener('click', unselectAll);
 });
 
 chrome.runtime.onMessage.addListener(
@@ -93,6 +122,7 @@ chrome.runtime.onMessage.addListener(
       case 'response_urls':
         processUrls(request.urls);
         port.postMessage({message: 'fetch_data', userAgent: request.userAgent, urls: request.urls});
+        resetValidationResult();
         break;
     }
   }
@@ -102,11 +132,13 @@ port.onMessage.addListener(
   function(request, sender, sendResponse) {
     switch(request.message) {
       case 'load_data':
-      debugger
         processUrls(request.urls, request.linkStatus);
         break;
       case 'update_link_status':
         updateLinkStatus(request.index, request.status);
+        break;
+      case 'done_validation':
+        updateValidateResult(request.status);
         break;
     }
   }

@@ -18,11 +18,24 @@
       }
 
       #container {
-        align-items: center;
-        display: flex;
-        justify-content: space-between;
         height: 300px;
         overflow-y: scroll;
+      }
+
+      .passed {
+        color: green;
+      }
+
+      .failed {
+        color: red;
+      }
+      
+      .url-list {
+        padding-left: 0;
+      }
+      
+      .urlList li{
+        list-style: none;
       }
     </style>
 
@@ -38,13 +51,16 @@
   <body>
     <h1>URLs in this page</h1>
     <button type="button" id="fetchUrls">Fetch URLs</button>
-    <button type="button" id="validateUrls">Validate</button>
     &nbsp;&nbsp;&nbsp;
     <input type="text" id="logDomain" />
     <button type="button" id="selectAll">Select All</button>
+    <button type="button" id="unselectAll">Unselect All</button>
+    &nbsp;&nbsp;&nbsp;
+    <button type="button" id="validateUrls">Validate</button>
     <div id="container">
-      <ul id="urlList">
+      <ul id="urlList" class="url-list">
       </ul>
     </div>
+    <div id="validationResult"></div>
   </body>
 </html>

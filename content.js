@@ -4,14 +4,17 @@ var logDomain = '';
 chrome.runtime.onMessage.addListener(
     function(request, sender, sendResponse) {
         if( request.message === "request_urls" ) {
-            var allUrls = 
-                [].map.call(document.querySelectorAll('a[href^="http"], a[href^="/"]'), (item) => {
-                    if (!logDomain || item.href.indexOf(logDomain) > -1) {
-                        return item.href;
+            let existingUrls = {};
+            let allUrls = [];
+            [].forEach.call(document.querySelectorAll('a[href^="http"], a[href^="/"]'), (item) => {
+                if (!logDomain || item.href.indexOf(logDomain) > -1) {
+                    let url = item.href;
+                    if (!existingUrls[url]) {
+                        allUrls.push(url);
+                        existingUrls[url] = true;
                     }
-                    return '';
-                })
-                .filter(item => item !== '');
+                }
+            });
 
             chrome.runtime.sendMessage(
                 {
