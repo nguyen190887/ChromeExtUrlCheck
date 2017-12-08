@@ -1,80 +1,37 @@
 var port = chrome.extension.connect({
-  name: "Sample Communication"
+  name: "Popup-Background Communication"
 });
-// port.postMessage("Hi BackGround");
-// port.onMessage.addListener(function(msg) {
-//   console.log("message recieved" + msg);
-// });
 
-// // TODO: move logic to background to avoid data lost issue
-// var _validatedUrls = [];
-// var _userAgent = '';
-// var _alreadyValidated = {};
-
-// function fetchUrlStatus(url, userAgent, callback) {
-//   var xhr = new XMLHttpRequest();
-//   xhr.open('POST', 'http://localhost:2150/api/linkchecker', true);
-//   xhr.setRequestHeader("Content-Type", "application/json");
-//   xhr.withCredentials = true;
-
-//   xhr.onreadystatechange = function() {
-//       if (xhr.readyState === 4 && xhr.status === 200) {
-//           var data = JSON.parse(xhr.responseText);
-//           console.log(`Result: ${data.StatusCode} | ${data.Success} | ${url}`);
-//           callback(data);
-//       }
-//   };
-
-//   var data = {
-//       Url: url,
-//       UserAgent: userAgent
-//   };
-//   xhr.send(JSON.stringify(data));
-// }
-
-// function appendZipCode(url, zip) {
-//   if (url.indexOf('?') > -1) {
-//     return url.replace('?', `?zipcode=${zip}&`);
-//   }
-//   else url + `?zipcode=${zip}`;
-// }
-
-// function validateUrls() {
-//   [].forEach.call(document.querySelectorAll('input[type=checkbox]'), item => {
-//     if (item.checked) {
-//       var index = parseInt(item.value),
-//           url = _validatedUrls[index];
-
-//       if (!_alreadyValidated[url]) {
-//         _alreadyValidated[url] = true;
-//         fetchUrlStatus(appendZipCode(url, 12345), _userAgent, data => {
-//           updateLinkStatus(index, data);
-//         });
-//       }
-//     }
-//   });
-// };
+function validateUrls() {
+  let urlIndexes = []
+    .filter
+    .call(document.querySelectorAll('input[type=checkbox]'), item => item.checked)
+    .map(item => parseInt(item.value));
+  port.postMessage({message: 'validate_data', urlIndexes});
+};
 
 function updateLinkStatus(index, data) {
-  var li = document.getElementById(`link_${index}`);
-  if (li) {
-    var status = document.getElementById(`status_${index}`);
-    if (!status) {
-      status = document.createElement('span');
-      status.id = `status_${index}`;
-      li.appendChild(status);
+  if (data) {
+    var li = document.getElementById(`link_${index}`);
+    if (li) {
+      var status = document.getElementById(`status_${index}`);
+      if (!status) {
+        status = document.createElement('span');
+        status.id = `status_${index}`;
+        li.appendChild(status);
+      }
+      
+      status.innerText = ` | ${data.statusCode} | ${data.success}`;
+      li.style.backgroundColor = data.success ? 'green' : 'red';
     }
-    
-    status.innerText = ` | ${data.StatusCode} | ${data.Success}`;
-    li.style.backgroundColor = data.Success ? 'green' : 'red';
   }
 }
 
-function processUrls(urls) {
+function processUrls(urls, linkStatus = {}) {
   var urlList = document.getElementById('urlList');
   urlList.innerHTML = '';
 
-  _validatedUrls = [];  
+  // _validatedUrls = [];  
   var index = 0;
   [].forEach.call(urls, url => {
       var a = document.createElement('a');
@@ -94,7 +51,9 @@ function processUrls(urls) {
 
       urlList.appendChild(li);
 
-      _validatedUrls.push(url);
+      updateLinkStatus(index, linkStatus[index]);
+
+      // _validatedUrls.push(url);
       index++;
   });
 }
@@ -143,7 +102,11 @@ port.onMessage.addListener(
   function(request, sender, sendResponse) {
     switch(request.message) {
       case 'load_data':
-        processUrls(request.urls);
+      debugger
+        processUrls(request.urls, request.linkStatus);
+        break;
+      case 'update_link_status':
+        updateLinkStatus(request.index, request.status);
         break;
     }
   }

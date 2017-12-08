@@ -7,9 +7,11 @@
 //     });
 // });
 
+var _isConnected = false;
 var _validatedUrls = [];
 var _userAgent = '';
 var _alreadyValidated = {};
+var _linkStatus = {};
 
 function fetchUrlStatus(url, userAgent, callback) {
   var xhr = new XMLHttpRequest();
@@ -36,55 +38,40 @@ function appendZipCode(url, zip) {
   if (url.indexOf('?') > -1) {
     return url.replace('?', `?zipcode=${zip}&`);
   }
-  else url + `?zipcode=${zip}`;
+  return url + `?zipcode=${zip}`;
 }
 
-function validateUrls() {
-  [].forEach.call(document.querySelectorAll('input[type=checkbox]'), item => {
-    if (item.checked) {
-      var index = parseInt(item.value),
-          url = _validatedUrls[index];
+function validateUrls(urlIndexes, port) {
+  [].forEach.call(urlIndexes, index => {
+      var url = _validatedUrls[index];
 
       if (!_alreadyValidated[url]) {
         _alreadyValidated[url] = true;
         fetchUrlStatus(appendZipCode(url, 12345), _userAgent, data => {
-          updateLinkStatus(index, data);
+            let status = { statusCode: data.StatusCode, success: data.Success};
+            _linkStatus[index] = status;
+
+            if (_isConnected) {
+                try {
+                    port.postMessage({message: 'update_link_status', index, status});
+                } catch(e) {}
+            }
         });
       }
-    }
   });
 };
 
-// function updateLinkStatus(index, data) {
-//   var li = document.getElementById(`link_${index}`);
-//   if (li) {
-//     var status = document.getElementById(`status_${index}`);
-//     if (!status) {
-//       status = document.createElement('span');
-//       status.id = `status_${index}`;
-//       li.appendChild(status);
-//     }
-    
-//     status.innerText = ` | ${data.StatusCode} | ${data.Success}`;
-//     li.style.backgroundColor = data.Success ? 'green' : 'red';
-//   }
-// }
-
 chrome.runtime.onMessage.addListener(
     function(request, sender, sendResponse) {
-        // switch(request.message) {
-        //     case 'response_urls':
-        //         _userAgent = request.userAgent;
-        //         _validatedUrls = request.urls;
-        //     break;
-        // }
+        // TODO
     }
 );
 
 chrome.extension.onConnect.addListener(function(port) {
+    _isConnected = true;
     console.log("Connected .....");
-
-    port.postMessage({message: 'load_data', urls: _validatedUrls});
+    
+    port.postMessage({message: 'load_data', urls: _validatedUrls, linkStatus: _linkStatus});
 
     port.onMessage.addListener(function(request) {         
          switch(request.message) {
@@ -93,8 +80,12 @@ chrome.extension.onConnect.addListener(function(port) {
                 _validatedUrls = request.urls;
                 break;
             case 'validate_data':
-                // TODO: validate data here
+                validateUrls(request.urlIndexes, port);
                 break;
         }
+    });
+
+    port.onDisconnect.addListener(function() {
+        _isConnected = false;
     });
 })
