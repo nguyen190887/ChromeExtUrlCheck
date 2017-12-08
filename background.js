@@ -86,12 +86,6 @@ function validateUrls(urlIndexes, port) {
   });
 };
 
-// chrome.runtime.onMessage.addListener(
-//     function(request, sender, sendResponse) {
-//         // TODO
-//     }
-// );
-
 chrome.extension.onConnect.addListener(function(port) {
     _isConnected = true;
     console.log("Connected .....");
